@@ -4,4 +4,4 @@ Instructions to run:
   git clone https://github.com/shashank-agg/filebus  
 2. Import the project into eclipse.  
 3. Run frontend.java first as server.  
-4. Run front.java as client.  
+4. Run frontend.java as client.
