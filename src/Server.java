@@ -18,12 +18,13 @@ public class Server {
 	private String group_ip = "224.0.0.3";
 	private int port = 25000;
 	private InetAddress group;
-	public Server(){
+	public Server(int port_param){
 		try {
 			group = InetAddress.getByName(group_ip);
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
+		port = port_param;
 		//start message listening thread
 		Thread listenThread = new Thread(new Runnable() {
 			public void run() {
