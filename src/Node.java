@@ -1,5 +1,6 @@
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -154,6 +155,15 @@ public class Node {
 		case "LJOIN": // Received permission to be right neighbour
 			handle_ljoin(hash);
 			break;
+		case "RSRCH": //Received search request from left neighbor
+			search_right(hash);
+			break;
+		case "LSRCH": //Received search request from right neighbor
+			search_left(hash);
+			break;
+		case "RESLT": //found match for search parameter.
+			display_result(hash);
+			break;
 		default:
 			break;
 		}
@@ -214,6 +224,105 @@ public class Node {
 	 
 		return result;
 	  }
+	
+	public void searchFile(String searchKey)
+	{
+		try {
 
+			HashMap<String, String> hash = new HashMap<String, String>();
+			// prepare join message
+			hash.put("title", "LSRCH");
+			hash.put("ip", InetAddress.getLocalHost().getHostAddress());
+			hash.put("key", searchKey);
+			SendMessage(HashToByte(hash), this.left_ip);
+			hash.put("title", "RSRCH");
+			SendMessage(HashToByte(hash), this.right_ip);
+		} 
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	private void search_left(HashMap<String, String> hash)
+	{
+		try {
+			//long sourceIP = ipToLong(hash.get("ip"));
+			//long myIP = ipToLong(InetAddress.getLocalHost().getHostAddress());
+			long leftIP = ipToLong(left_ip);
+			
+			if(leftIP==0)
+				return;
+			HashMap<String, String> hash2  = search(hash.get("key"));
+			if(hash2.size()>0)
+			{
+					//match found.
+					//return the result to called IP.
+				// prepare found message
+				hash2.put("title", "RESLT");
+				hash.put("ip", InetAddress.getLocalHost().getHostAddress());
+				SendMessage(HashToByte(hash), hash.get("ip"));
+			}
+			//call search_left for left of left node
+			SendMessage(HashToByte(hash), this.left_ip);
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+		
+	}
 
+	private void search_right(HashMap<String, String> hash)
+	{
+		try {
+			//long sourceIP = ipToLong(hash.get("ip"));
+			//long myIP = ipToLong(InetAddress.getLocalHost().getHostAddress());
+			long rightIP = ipToLong(right_ip);
+			
+			if(rightIP==0)
+				return;
+			HashMap<String, String> hash2  = search(hash.get("key"));
+			if(hash2.size()>0)
+			{
+					//match found.
+					//return the result to called IP.
+				// prepare found message
+				hash2.put("title", "RESLT");
+				hash.put("ip", InetAddress.getLocalHost().getHostAddress());
+				SendMessage(HashToByte(hash), hash.get("ip"));
+			}
+			//call search_right for right of right node
+			SendMessage(HashToByte(hash), this.right_ip);
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+			
+	}
+
+	private HashMap<String, String> search(String searchKey)
+	{
+		//makes a list of all files in C drive
+		File dir = new File("C:");
+		String[] children = dir.list();
+		int k=0;
+		HashMap<String, String> hash = new HashMap<String, String>();
+		for(int i = 0;i<children.length;i++)
+		{
+			//searching each directory name for substring searchKey
+			boolean retval = children[i].contains(searchKey);
+		    if(retval == true)
+		    {
+		    	hash.put(String.valueOf(k),children[i]);
+		    	k++;
+		    }
+		}
+		return hash;
+	}
+
+	private void display_result(HashMap<String, String> hash)
+	{
+		for(int i=0;i<(hash.size())-2;i++)
+		{
+			System.out.println(hash.get(String.valueOf(i)) + "---> " + hash.get("ip"));
+		}
+	}
 }
