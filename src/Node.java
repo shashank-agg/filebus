@@ -260,8 +260,8 @@ public class Node {
 					//return the result to called IP.
 				// prepare found message
 				hash2.put("title", "RESLT");
-				hash.put("ip", InetAddress.getLocalHost().getHostAddress());
-				SendMessage(HashToByte(hash), hash.get("ip"));
+				hash2.put("ip", InetAddress.getLocalHost().getHostAddress());
+				SendMessage(HashToByte(hash2), hash.get("ip"));
 			}
 			//call search_left for left of left node
 			SendMessage(HashToByte(hash), this.left_ip);
@@ -287,8 +287,8 @@ public class Node {
 					//return the result to called IP.
 				// prepare found message
 				hash2.put("title", "RESLT");
-				hash.put("ip", InetAddress.getLocalHost().getHostAddress());
-				SendMessage(HashToByte(hash), hash.get("ip"));
+				hash2.put("ip", InetAddress.getLocalHost().getHostAddress());
+				SendMessage(HashToByte(hash2), hash.get("ip"));
 			}
 			//call search_right for right of right node
 			SendMessage(HashToByte(hash), this.right_ip);
