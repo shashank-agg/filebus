@@ -228,7 +228,7 @@ public class Node {
 	public void searchFile(String searchKey)
 	{
 		try {
-
+			System.out.println("sending file request");
 			HashMap<String, String> hash = new HashMap<String, String>();
 			// prepare join message
 			hash.put("title", "LSRCH");
