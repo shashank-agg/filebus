@@ -12,4 +12,4 @@ If running two computers on the same network:
 
 After selecting ip, you can query for files.
 
-![ScreenShot](screen.png)
+![ScreenShot](screen.jpg)
