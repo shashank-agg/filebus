@@ -1,7 +1,15 @@
 # filebus
 Instructions to run:  
-1.Fork this repo to your github account or clone it directly to your computer using:   
-  git clone https://github.com/shashank-agg/filebus  
-2. Import the project into eclipse.  
-3. Run frontend.java and provide some random port.
-4. Run frontend.java again and provide ANOTHER port.
+
+If running 2 instances on the same computer:
+	Run under 2 different ports
+	Select any network ip and click 'Use this ip'
+
+If running two computers on the same network:
+	Run one instance on each.Give any ports
+	Select ip from the given network and click 'Use this ip'
+
+
+After selecting ip, you can query for files.
+
+![ScreenShot](/screenshots/latest.png)
