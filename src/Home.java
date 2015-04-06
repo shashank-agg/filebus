@@ -100,7 +100,7 @@ public class Home extends JFrame {
 		resultList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPane.setViewportView(resultList);
 		
-		JButton useIpButton = new JButton("Use this IP");
+		final JButton useIpButton = new JButton("Use this IP");
 		
 		useIpButton.setBounds(415, 327, 139, 23);
 		contentPane.add(useIpButton);
@@ -144,6 +144,7 @@ public class Home extends JFrame {
 					e.printStackTrace();
 				}
 				backend.SendJoinMessage();
+				useIpButton.setEnabled(false);
 			}
 		});
 		

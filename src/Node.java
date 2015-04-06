@@ -41,7 +41,7 @@ public class Node {
 			e.printStackTrace();
 		}
 		Scanner in = new Scanner(System.in);
-		System.out.println(" Enter multicast port");
+//		System.out.println(" Enter multicast port");
 		multicastport = 25000;
 //		multicastport = Integer.parseInt(in.nextLine());		
 		
@@ -72,7 +72,7 @@ public class Node {
 				this.frontend.statusLabel.setText("Timeout");
 				SendJoinMessage();
 				try {
-					Thread.sleep(30000);
+					Thread.sleep(3000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -89,6 +89,7 @@ public class Node {
 	}
 	
 	private void leftRightPinger (String ipToPing, String portToPing) throws IOException{
+//		System.out.println("pinging "+ipToPing+":"+portToPing);
 		if(ipToPing.equals(""))
 			return;
 		DatagramSocket datagramSocket;
@@ -106,11 +107,19 @@ public class Node {
 			byte[] received_msg = new byte[10000];
 			DatagramPacket received_packet = new DatagramPacket(received_msg,received_msg.length);
 			datagramSocket.receive(received_packet);
-			
+			this.frontend.statusLabel.setText("Pong received from : "+ received_packet.getSocketAddress().toString());
 		} catch (SocketException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}	
+	}
+	
+	private void send_pong(HashMap<String, String> hash_revceived){
+		HashMap<String, String> hash = new HashMap<String, String>();
+		hash.put("title", "PONG");
+		hash.put("ip", this.my_ip);
+		hash.put("port", String.valueOf(this.port));
+		SendMessage(HashToByte(hash), hash_revceived.get("ip"), hash_revceived.get("port"));
 	}
 	
 	public void StartListening() {
@@ -120,12 +129,11 @@ public class Node {
 				backgroundListener();
 			}
 		});
-
 		listenThread.start();
 	}
 
 	private void backgroundListener() {
-		System.out.println("started listener");
+		System.out.println("started listener on ip " + this.my_ip + ":"+String.valueOf(this.port));
 		HashMap<String, String> hash = new HashMap<String, String>();
 		ObjectInputStream oin;
 		MulticastSocket listen_socket = null;
@@ -139,7 +147,7 @@ public class Node {
 			DatagramPacket received_packet = new DatagramPacket(received_msg,
 					received_msg.length);
 			while (true) {
-				//System.out.println("Waiting for message");
+//				System.out.println("Waiting for message on port "+ String.valueOf(this.port));
 				listen_socket.receive(received_packet);
 				received_msg = received_packet.getData();
 				ByteArrayInputStream byte_input = new ByteArrayInputStream(
@@ -148,7 +156,7 @@ public class Node {
 				hash = (HashMap<String, String>) oin.readObject();
 
 				this.frontend.statusLabel.setText("Message received.Type: " + hash.get("title")+" from IP: "+hash.get("ip"));
-
+//				System.out.println("Message received.Type: " + hash.get("title")+" from IP: "+hash.get("ip"));
 				oin.close();
 				demuxer(hash);
 			}
@@ -183,6 +191,7 @@ public class Node {
 		hash.put("ip", this.my_ip);
 		hash.put("port", String.valueOf(this.port));
 		SendMessage(HashToByte(hash), this.group_ip,String.valueOf(this.multicastport));
+//		System.out.println("Sent join to "+String.valueOf(this.port));
 	}
 
 	private void SendRightJoinMessage(String ip,String port) {
@@ -225,6 +234,8 @@ public class Node {
 		case "RESLT": //found match for search parameter.
 			GUI_update_result(hash);
 			break;
+		case "PING":
+			send_pong(hash);
 		default:
 			break;
 		}
@@ -265,7 +276,7 @@ public class Node {
 
 	private void handle_ljoin(HashMap<String, String> hash) {
 		this.right_ip = hash.get("ip");
-		this.left_port = hash.get("port");
+		this.right_port = hash.get("port");
 
 		return;
 	}
