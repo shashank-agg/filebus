@@ -8,6 +8,7 @@ import java.awt.event.ActionListener;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
+import javax.swing.JFileChooser;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.JLabel;
@@ -21,10 +22,15 @@ import javax.swing.JMenuBar;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.Color;
+import java.io.File;
+
 import javax.swing.border.EtchedBorder;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.JList;
 import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
+import javax.swing.JTable;
+import java.awt.SystemColor;
 
 
 public class Home extends JFrame {
@@ -33,11 +39,16 @@ public class Home extends JFrame {
 	private Node backend;
 	public JTextField fileName;
 	public JScrollPane scrollPane;
-	public JList resultList;
 	public JList ipList;
 	public JLabel statusLabel;
 	public JButton getFileButton;
 	private JButton searchButton;
+	JFileChooser fc;
+	public JTable resultTable;
+	public DefaultTableModel resultModel;
+	private JTextField IPfield;
+	private JTextField PortField;
+	private JButton startButton;
 	
 	public static void main(String[] args){
 		try {
@@ -55,6 +66,7 @@ public class Home extends JFrame {
 	
 	
 	public Home() {
+		setBackground(Color.WHITE);
 		String choice;	
 		Scanner in = new Scanner(System.in);
 		System.out.println(" Enter port");
@@ -64,8 +76,9 @@ public class Home extends JFrame {
 		
 		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 600, 450);
+		setBounds(100, 100, 600, 490);
 		contentPane = new JPanel();
+		contentPane.setBackground(Color.WHITE);
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
@@ -96,17 +109,29 @@ public class Home extends JFrame {
 		scrollPane.setBounds(10, 92, 384, 224);
 		contentPane.add(scrollPane);
 		
-		resultList = new JList();
-		resultList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		scrollPane.setViewportView(resultList);
+		resultTable = new JTable();
+		resultTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		scrollPane.setViewportView(resultTable);
 		
+		
+		resultModel = new DefaultTableModel(){
+			 public boolean isCellEditable(int row, int column)
+			    {
+			      return false;//This causes all cells to be not editable
+			    }
+		 };
+		 resultModel.addColumn("File Name");
+		 resultModel.addColumn("IP");
+		 resultModel.addColumn("Port");
+		 resultTable.setModel(resultModel);
+		 
 		final JButton useIpButton = new JButton("Use this IP");
 		
 		useIpButton.setBounds(415, 327, 139, 23);
 		contentPane.add(useIpButton);
 		
 		JScrollPane scrollPane_1 = new JScrollPane();
-		scrollPane_1.setViewportBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		scrollPane_1.setViewportBorder(null);
 		scrollPane_1.setBounds(415, 92, 141, 224);
 		contentPane.add(scrollPane_1);
 		
@@ -126,6 +151,30 @@ public class Home extends JFrame {
 		statusLabel.setBounds(66, 377, 488, 23);
 		contentPane.add(statusLabel);
 		
+		JButton btnChoosePublicFolder = new JButton("Choose Public Folder");
+		btnChoosePublicFolder.setBounds(120, 327, 172, 23);
+		contentPane.add(btnChoosePublicFolder);
+		
+		JLabel lblAsd = new JLabel("Enter IP, port of known peer. If no peer is known, leave blank.");
+		lblAsd.setBounds(10, 405, 347, 14);
+		contentPane.add(lblAsd);
+		
+		IPfield = new JTextField();
+		IPfield.setToolTipText("IP");
+		IPfield.setBounds(13, 420, 139, 20);
+		contentPane.add(IPfield);
+		IPfield.setColumns(10);
+		
+		PortField = new JTextField();
+		PortField.setToolTipText("Port");
+		PortField.setBounds(167, 420, 86, 20);
+		contentPane.add(PortField);
+		PortField.setColumns(10);
+		
+		startButton = new JButton("START");
+		startButton.setBounds(280, 419, 274, 23);
+		contentPane.add(startButton);
+		
 		
 		// now attach backend
 		this.backend = new Node(this,port);
@@ -136,14 +185,6 @@ public class Home extends JFrame {
 				if(ipList.getSelectedValue() == null)
 					return;
 				backend.my_ip = ipList.getSelectedValue().toString();
-				backend.StartListening();
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				backend.SendJoinMessage();
 				useIpButton.setEnabled(false);
 			}
 		});
@@ -153,6 +194,61 @@ public class Home extends JFrame {
 				backend.searchFile(fileName.getText());
 			}
 		});
+		
+		fc = new JFileChooser();
+		fc.setFileSelectionMode( JFileChooser.DIRECTORIES_ONLY);
+		btnChoosePublicFolder.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				int returnVal = fc.showOpenDialog(Home.this);
+				 
+	            if (returnVal == JFileChooser.APPROVE_OPTION) {
+	                File file = fc.getSelectedFile();
+	                //This is where a real application would open the file.
+//	                System.out.println("Opening: " + file.getAbsolutePath() + ".");
+	                backend.PublicFolder = file.getAbsolutePath();
+	            }
+			}
+		});
+		
+		getFileButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String filename = resultTable.getValueAt(resultTable.getSelectedRow(), 0).toString();
+				String ip = resultTable.getValueAt(resultTable.getSelectedRow(), 1).toString();
+				int port = Integer.parseInt(resultTable.getValueAt(resultTable.getSelectedRow(), 2).toString());
+				backend.getfile(filename,ip,port);
+			}
+		});
+		
+		startButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				startButton.setEnabled(false);
+				if(!IPfield.getText().equals("") && !PortField.getText().equals("")){
+					System.out.println("Given");
+					backend.StartListening();
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					backend.SendPrivateJoinMessage(IPfield.getText(), PortField.getText());
+				}
+				else{
+					System.out.println("no ip,port given");
+					backend.StartListening();
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					backend.SendJoinMessage();
+				}
+					
+				
+			}
+		});
+		
 
 	}
 }
