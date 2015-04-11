@@ -1,6 +1,10 @@
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -10,15 +14,12 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.rmi.server.SocketSecurityException;
 import java.util.HashMap;
 import java.util.Scanner;
-
 import javax.swing.DefaultListModel;
-import javax.swing.table.DefaultTableModel;
 
 public class Node {
 	// private String left_ip;
@@ -56,8 +57,7 @@ public class Node {
 		});
 		pingThread.start();
 	}
-	
-	
+		
 	private void pinger(){	
 		while(true){
 			try {
@@ -195,15 +195,6 @@ public class Node {
 		SendMessage(HashToByte(hash), this.group_ip,String.valueOf(this.multicastport));
 		System.out.println("Sending join to "+ this.group_ip + "on port "+this.multicastport);
 	}
-	
-	public void SendPrivateJoinMessage(String ip,String port) {
-		HashMap<String, String> hash = new HashMap<String, String>();
-		// prepare join message
-		hash.put("title", "PJOIN");
-		hash.put("ip", this.my_ip);
-		hash.put("port", String.valueOf(this.port));
-		SendMessage(HashToByte(hash), ip, port);
-	}
 
 	private void SendRightJoinMessage(String ip,String port) {
 		HashMap<String, String> hash = new HashMap<String, String>();
@@ -222,8 +213,6 @@ public class Node {
 		hash.put("port", String.valueOf(this.port));
 		SendMessage(HashToByte(hash), ip,port);
 	}
-
-	
 
 	private void demuxer(HashMap<String, String> hash) {
 		switch (hash.get("title")) {
@@ -245,119 +234,52 @@ public class Node {
 		case "RESLT": //found match for search parameter.
 			GUI_update_result(hash);
 			break;
-		case "PJOIN": //found match for search parameter.
-			handle_pjoin(hash);
-			break;
 		case "PING":
 			send_pong(hash);
-		case "RPJOIN":
-			handle_rpjoin(hash);
-		case "RLJOIN":
-			handle_lpjoin(hash);		
+		case "GFILE":
+			startFileSendingThread(hash);
 		default:
 			break;
 		}
 	}
 
-	private void handle_lpjoin(HashMap<String, String> hash) {
-		long otherIP = ipToLong(hash.get("ip"));
-		long myIP = ipToLong(this.my_ip);
-		long rightIP = ipToLong(right_ip);
-		long leftIP = ipToLong(left_ip);
-		
-		if (otherIP >= myIP	&& ((otherIP <= rightIP) || (rightIP == 0)) && !(this.port == Integer.parseInt(hash.get("port")) && myIP == otherIP)) {
-			// Received guy is new right neighbour
-			this.right_ip = hash.get("ip");
-			this.right_port = hash.get("port");
-			this.frontend.statusLabel.setText("New right neighbour : "+hash.get("ip")+":"+ hash.get("port"));
-			SendRightJoinMessage(hash.get("ip"),hash.get("port"));
-			return;
-		} 
-		
-		else if (otherIP < myIP	&& ((otherIP >= leftIP) || (leftIP == 0))) {
-			// Received guy is new left neighbour
-			hash.put("TITLE","LPJOIN");
-			SendMessage(HashToByte(hash), this.left_ip,this.left_port);
-			this.left_ip= hash.get("ip");
-			this.left_port = hash.get("port");
-			this.frontend.statusLabel.setText("New left neighbour : "+hash.get("ip")+":"+ hash.get("port"));
-			SendLeftJoinMessage(hash.get("ip"),hash.get("port"));
-		}
-		else if(otherIP < myIP){
-			hash.put("TITLE","LPJOIN");
-			SendMessage(HashToByte(hash), this.left_ip,this.left_port);
-		}	
+	private void startFileSendingThread(final HashMap<String, String> hash) {
+		Thread listenThread = new Thread(new Runnable() {
+			public void run() {
+				sendfile(hash.get("filename"), hash.get("ip"), hash.get("port"));
+			}
+		});
+		listenThread.start();		
 	}
 
-	private void handle_rpjoin(HashMap<String, String> hash) {
-		long otherIP = ipToLong(hash.get("ip"));
-		long myIP = ipToLong(this.my_ip);
-		long rightIP = ipToLong(right_ip);
-		long leftIP = ipToLong(left_ip);
-		
-		if (otherIP < myIP	&& ((otherIP >= leftIP) || (leftIP == 0)) && !(this.port == Integer.parseInt(hash.get("port")) && myIP == otherIP)) {
-			// Received guy is new right neighbour
-			this.left_ip = hash.get("ip");
-			this.left_port = hash.get("port");
-			this.frontend.statusLabel.setText("New left neighbour : "+hash.get("ip")+":"+ hash.get("port"));
-			SendLeftJoinMessage(hash.get("ip"),hash.get("port"));
-			return;
-		} 
-		
-		else if (otherIP >= myIP	&& ((otherIP <= rightIP) || (rightIP == 0))) {
-			// Received guy is new right neighbour
-			hash.put("TITLE","RPJOIN");
-			SendMessage(HashToByte(hash), this.right_ip,this.right_port);
-			this.right_ip= hash.get("ip");
-			this.right_port = hash.get("port");
-			this.frontend.statusLabel.setText("New right neighbour : "+hash.get("ip")+":"+ hash.get("port"));
-			SendRightJoinMessage(hash.get("ip"),hash.get("port"));
-		}
-		else if(otherIP > myIP){
-			hash.put("TITLE","LPJOIN");
-			SendMessage(HashToByte(hash), this.right_ip,this.right_port);
-		}	
-		
-	}
-
-	private void handle_pjoin(HashMap<String, String> hash) {
-		long otherIP = ipToLong(hash.get("ip"));
-		long myIP = ipToLong(this.my_ip);
-		long rightIP = ipToLong(right_ip);
-		long leftIP = ipToLong(left_ip);
-		
-		if(this.port == Integer.parseInt(hash.get("port")) && myIP == otherIP)
-			return;
-		
-		if (otherIP >= myIP	&& ((otherIP <= rightIP) || (rightIP == 0))) {
-			// Received guy is new right neighbour
-			hash.put("TITLE","RPJOIN");
-			if(rightIP!=0)
-			SendMessage(HashToByte(hash), this.right_ip,this.right_port);
-			this.right_ip = hash.get("ip");
-			this.right_port = hash.get("port");
-			this.frontend.statusLabel.setText("New right neighbour : "+hash.get("ip")+":"+ hash.get("port"));
-			SendRightJoinMessage(hash.get("ip"),hash.get("port"));			
-		} 
-		
-		
-		else if (otherIP < myIP	&& ((otherIP >= leftIP) || (leftIP == 0))) {
-			System.out.println(otherIP);
-			// Received guy is new left neighbour
-			hash.put("TITLE","LPJOIN");
-			SendMessage(HashToByte(hash), this.left_ip,this.left_port);
-			this.left_ip= hash.get("ip");
-			this.left_port = hash.get("port");
-			this.frontend.statusLabel.setText("New left neighbour : "+hash.get("ip")+":"+ hash.get("port"));
-			SendLeftJoinMessage(hash.get("ip"),hash.get("port"));
-		}
-		else{
-			hash.put("TITLE","LPJOIN");
-			if(!this.left_ip.equals("") && otherIP < myIP)
-				SendMessage(HashToByte(hash), this.left_ip,this.left_port);
-			hash.put("title", "RPJOIN");
-			if(!this.right_ip.equals("") && otherIP > myIP)
-				SendMessage(HashToByte(hash), this.right_ip,this.right_port);
+	protected void sendfile(String filename, String ip, String port) {
+		// TODO Auto-generated method stub
+		try {
+			Socket sendsock = new Socket(ip, Integer.parseInt(port));
+			BufferedOutputStream bos = new BufferedOutputStream(sendsock.getOutputStream());
+			
+			File sendfile = new File(this.PublicFolder+File.separator+filename);					
+			FileInputStream fis = new FileInputStream(sendfile);  
+		    BufferedInputStream bis = new BufferedInputStream(fis);
+		    
+		     try {
+		    	    int len = 0;
+		    	    byte[] data = new byte[32768];	
+		    	    while((len = bis.read(data)) != -1)
+		    	    {
+		    	    	bos.write(data,0,len);
+		    	    	bos.flush();
+		    	    } 
+		    	    System.out.println("File sent");
+		    	    bos.close();
+		    	    fis.close();
+		    	    bis.close();
+		    	} catch(IOException ex) {
+		    	    ex.printStackTrace();
+		    	}
+		} catch (NumberFormatException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
@@ -549,17 +471,51 @@ public class Node {
 		}
 	}
 
+	public void startFileReceivingThread(final String filename, final String ip, final int port2) {
+		// start message listening thread
+		Thread listenThread = new Thread(new Runnable() {
+			public void run() {
+				getfile(filename, ip, port2);
+			}
+		});
+		listenThread.start();
+	}	
+	
 	public void getfile(String filename, String ip, int port2) {	
-		ServerSocket fileReceiver;
+		ServerSocket fileReceiverListener;
 		try {
-			fileReceiver = new ServerSocket();
+			fileReceiverListener = new ServerSocket();
+			InetSocketAddress my_address = new InetSocketAddress(this.my_ip,0);
+			fileReceiverListener.bind(my_address);
 			HashMap<String, String> hash = new HashMap<String, String>();
 			hash.put("title", "GFILE");
 			hash.put("ip", this.my_ip);
 			hash.put("filename", filename);
-			hash.put("port", String.valueOf(fileReceiver.getLocalPort()));
+			hash.put("port", String.valueOf(fileReceiverListener.getLocalPort()));
 			SendMessage(HashToByte(hash), ip, String.valueOf(port2));
 			
+			Socket receiveSock = fileReceiverListener.accept();
+			File dir = new File(this.PublicFolder+File.separator+"ReceivedFiles");
+			if (!dir.exists())
+				dir.mkdir();
+			
+			File file=new File(this.PublicFolder+File.separator+"ReceivedFiles"+File.separator+filename);
+			FileOutputStream fos = new FileOutputStream(file);
+            
+			BufferedInputStream bis=new BufferedInputStream(receiveSock.getInputStream());
+			int n;
+			int size_received = 0;
+            byte[] buffer = new byte[32768];
+            while ((n = bis.read(buffer)) > -1) {
+            	size_received+=n;
+            	 this.frontend.statusLabel.setText("Progress: "+size_received/(1024*1024)+" MB");
+                fos.write(buffer, 0, n);
+                fos.flush();
+            }
+
+            this.frontend.statusLabel.setText("File received.Saved as "+this.PublicFolder+File.separator+"ReceivedFiles"+File.separator+filename);
+            fos.close();
+            bis.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

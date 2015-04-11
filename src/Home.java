@@ -8,7 +8,9 @@ import java.awt.event.ActionListener;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JProgressBar;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.JLabel;
@@ -46,8 +48,6 @@ public class Home extends JFrame {
 	JFileChooser fc;
 	public JTable resultTable;
 	public DefaultTableModel resultModel;
-	private JTextField IPfield;
-	private JTextField PortField;
 	private JButton startButton;
 	
 	public static void main(String[] args){
@@ -155,31 +155,25 @@ public class Home extends JFrame {
 		btnChoosePublicFolder.setBounds(120, 327, 172, 23);
 		contentPane.add(btnChoosePublicFolder);
 		
-		JLabel lblAsd = new JLabel("Enter IP, port of known peer. If no peer is known, leave blank.");
-		lblAsd.setBounds(10, 405, 347, 14);
-		contentPane.add(lblAsd);
-		
-		IPfield = new JTextField();
-		IPfield.setToolTipText("IP");
-		IPfield.setBounds(13, 420, 139, 20);
-		contentPane.add(IPfield);
-		IPfield.setColumns(10);
-		
-		PortField = new JTextField();
-		PortField.setToolTipText("Port");
-		PortField.setBounds(167, 420, 86, 20);
-		contentPane.add(PortField);
-		PortField.setColumns(10);
-		
 		startButton = new JButton("START");
-		startButton.setBounds(280, 419, 274, 23);
+		startButton.setBounds(10, 417, 544, 23);
 		contentPane.add(startButton);
+		
+
+	    
+		JButton btnClear = new JButton("Clear");
+		btnClear.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				resultModel.setRowCount(0);
+			}
+		});
+		btnClear.setBounds(305, 67, 89, 23);
+		contentPane.add(btnClear);
 		
 		
 		// now attach backend
 		this.backend = new Node(this,port);
-		
-		
+				
 		useIpButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if(ipList.getSelectedValue() == null)
@@ -212,29 +206,19 @@ public class Home extends JFrame {
 		
 		getFileButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				
 				String filename = resultTable.getValueAt(resultTable.getSelectedRow(), 0).toString();
 				String ip = resultTable.getValueAt(resultTable.getSelectedRow(), 1).toString();
 				int port = Integer.parseInt(resultTable.getValueAt(resultTable.getSelectedRow(), 2).toString());
-				backend.getfile(filename,ip,port);
+				backend.startFileReceivingThread(filename,ip,port);
+				
 			}
 		});
+		
 		
 		startButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				startButton.setEnabled(false);
-				if(!IPfield.getText().equals("") && !PortField.getText().equals("")){
-					System.out.println("Given");
-					backend.StartListening();
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					backend.SendPrivateJoinMessage(IPfield.getText(), PortField.getText());
-				}
-				else{
-					System.out.println("no ip,port given");
 					backend.StartListening();
 					try {
 						Thread.sleep(1000);
@@ -244,9 +228,7 @@ public class Home extends JFrame {
 					}
 					backend.SendJoinMessage();
 				}
-					
 				
-			}
 		});
 		
 
